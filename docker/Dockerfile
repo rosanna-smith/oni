@@ -3,6 +3,7 @@ FROM node:lts-alpine AS build
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY scripts ./scripts
 
 RUN corepack enable && pnpm install --frozen-lockfile
 
@@ -11,8 +12,7 @@ COPY . .
 # NOTE: In case we are building locally and have put a file here
 RUN rm -f public/configuration.json
 
-RUN pnpm run setup:vocabs /app/vocab.json && \
-  pnpm run build
+RUN pnpm run build
 
 FROM nginx:alpine
 
