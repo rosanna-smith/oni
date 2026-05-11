@@ -1,0 +1,313 @@
+<script setup lang="ts">
+import { useGtm } from '@gtm-support/vue-gtm';
+import { injectHead } from '@unhead/vue';
+import { inject, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
+import AccessHelper from '@/components/AccessHelper.vue';
+import CollectionItem from '@/components/CollectionItem.vue';
+import CitationCard from '@/components/cards/CitationCard.vue';
+import LicenseCard from '@/components/cards/LicenseCard.vue';
+import ManagementCard from '@/components/cards/ManagementCard.vue';
+import MemberOfCard from '@/components/cards/MemberOfCard.vue';
+import RetrieveDataMetadata from '@/components/cards/RetrieveDataMetadata.vue';
+import TakedownCard from '@/components/cards/TakedownCard.vue';
+import MetaField from '@/components/MetaField.vue';
+import MediaTypeIcon from '@/components/widgets/MediaTypeIcon.vue';
+import MemberOfLink from '@/components/widgets/MemberOfLink.vue';
+import { useHead } from '@/composables/head';
+import { useEntityView } from '@/composables/useEntityView';
+import { ui } from '@/configuration';
+import type { ApiService, EntityType, GetEntitiesParams, RoCrate } from '@/services/api';
+import { formatEncodingFormat, formatFileSize } from '@/tools';
+
+const { t } = useI18n();
+const { object: config } = ui;
+
+const api = inject<ApiService>('api');
+if (!api) {
+  throw new Error('API instance not provided');
+}
+
+const route = useRoute();
+const head = injectHead();
+const gtm = useGtm();
+
+const id = route.query.id as string;
+
+const { name, meta, populateName, populateMeta, handleMissingEntity } = useEntityView(config);
+
+const parts = ref<({ '@id': string; name: string; encodingFormat: string[] } & Record<string, string>)[]>([]);
+const mediaTypes = ref<string[]>([]);
+const isLoading = ref(false);
+const isLoadingMembers = ref(false);
+const metadata = ref<RoCrate | undefined>();
+const entity = ref<EntityType | undefined>();
+const membersFiltered = ref<EntityType[]>([]);
+const currentPage = ref(1);
+const pageSize = ref(10);
+const totalMembers = ref(0);
+
+const populateParts = (md: RoCrate) => {
+  if (!md.hasPart) {
+    parts.value = [];
+    mediaTypes.value = [];
+
+    return;
+  }
+
+  // TODO: Fix ro-crate-js so it returns arrays for things that are arrays even with array: false
+  const newParts = md.hasPart && Array.isArray(md.hasPart) ? md.hasPart : [md.hasPart];
+
+  const newParts2 = newParts.map((part) => ({
+    ...part,
+    encodingFormat: Array.isArray(part.encodingFormat) ? part.encodingFormat : [part.encodingFormat],
+  }));
+
+  // @ts-expect-error FIX types later
+  parts.value = newParts2;
+
+  if (parts.value.length) {
+    const up = parts.value.flatMap((p) => p.encodingFormat).filter((p) => typeof p === 'string');
+    mediaTypes.value = [...new Set(up)];
+  }
+};
+
+const populate = (md: RoCrate) => {
+  populateName(md);
+  populateMeta(md);
+  populateParts(md);
+  useHead(head, md);
+};
+
+const fetchMembers = async () => {
+  if (!entity.value?.memberOf) {
+    return;
+  }
+
+  const params: GetEntitiesParams = {
+    memberOf: entity.value.memberOf.id,
+    entityType: 'http://pcdm.org/models#Object',
+    limit: pageSize.value,
+  };
+
+  if (currentPage.value !== 1) {
+    params.offset = (currentPage.value - 1) * pageSize.value;
+  }
+
+  isLoadingMembers.value = true;
+  const children = await api.getEntities(params);
+
+  if ('entities' in children) {
+    membersFiltered.value = children.entities;
+    totalMembers.value = children.total;
+  }
+  isLoadingMembers.value = false;
+};
+
+const fetchdata = async () => {
+  if (!id) {
+    handleMissingEntity();
+
+    return;
+  }
+
+  isLoading.value = true;
+
+  const { entity: e, metadata: md } = await api.getEntity(id);
+  if (!md) {
+    handleMissingEntity();
+
+    return;
+  }
+
+  gtm?.trackEvent({
+    event: '/object',
+    category: 'object',
+    label: 'loaded-object',
+    value: id,
+  });
+
+  metadata.value = md;
+  entity.value = e;
+  populate(md);
+
+  isLoading.value = false;
+
+  await fetchMembers();
+};
+
+const updatePage = async (page: number) => {
+  currentPage.value = page;
+  await fetchMembers();
+};
+
+watch(
+  () => route.params,
+  () => {
+    currentPage.value = 1;
+    fetchdata();
+  },
+);
+
+fetchdata();
+</script>
+
+<template>
+  <div v-if="entity" class="px-10 pt-10 pb-7 bg-white">
+    <el-row :align="'middle'" class="mb-2 text-3xl font-medium">
+      <h5>
+        <MemberOfLink :entity="entity" />
+        {{ name }}
+      </h5>
+    </el-row>
+    <hr class="divider divider-gray pt-2" />
+  </div>
+
+  <el-row :justify="'center'" v-if="metadata && entity" class="m-5 px-10" v-loading="isLoading">
+    <el-col :xs="24" :sm="24" :md="24" :lg="16" :xl="16">
+      <AccessHelper v-if="entity?.access && metadata.license" :access="entity.access" :license="metadata.license" />
+
+      <el-row>
+        <el-col v-for="m of meta">
+          <MetaField :meta="m" />
+        </el-col>
+      </el-row>
+
+      <el-row v-if="parts.length">
+        <el-col :span="24" class="divide-solid divide-y-2 divide-red-700">
+          <div class="grid-content py-4">
+            <h2 class="text-2xl tracking-tight">
+              {{ t('object.files') }} {{ parts.length }}
+              <MediaTypeIcon v-for="mediaType of mediaTypes" :mediaType="mediaType" />
+            </h2>
+          </div>
+
+          <div />
+        </el-col>
+      </el-row>
+
+      <el-row class="p-5">
+        <el-col :span="24">
+          <el-table :data="parts" stripe style="width: 100%">
+            <el-table-column prop="name" :label="t('object.filename')" min-width="200">
+              <template #default="scope">
+                {{ scope.row.name || scope.row['@id'] }}
+              </template>
+            </el-table-column>
+
+            <el-table-column prop="contentSize" :label="t('common.size')" width="120">
+              <template #default="scope">
+                {{ formatFileSize(scope.row.contentSize) }}
+              </template>
+            </el-table-column>
+
+            <el-table-column prop="encodingFormat" :label="t('object.encodingFormat')" min-width="180">
+              <template #default="scope">
+                {{ formatEncodingFormat(scope.row.encodingFormat) }}
+              </template>
+            </el-table-column>
+
+            <el-table-column :label="t('common.actions')" width="120">
+              <template #default="scope">
+                <router-link :to="`/file?id=${encodeURIComponent(scope.row['@id'])}`">
+                  <el-button type="primary" size="small" :disabled="!entity.access.content">
+                    {{ t('common.view') }}
+                  </el-button>
+                </router-link>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-col>
+      </el-row>
+    </el-col>
+
+    <el-col :xs="24" :sm="24" :md="24" :lg="8" :xl="8">
+      <el-row v-if="ui.management" :gutter="20" class="pb-5">
+        <el-col>
+          <ManagementCard :entity="entity" />
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20" :align="'middle'" class="justify-center content-center pb-5">
+        <el-col v-if="metadata.license">
+          <el-card :body-style="{ padding: '0px' }" class="mx-10 p-5">
+            <h5 class="text-2xl font-medium">
+              {{ t('object.access') }}
+              <el-tooltip class="box-item" effect="light" trigger="hover" :content="t('object.accessTooltip')"
+                placement="top">
+                <font-awesome-icon icon="fa-solid fa-circle-info" class="ml-2 cursor-pointer" size="xs" color="gray" />
+              </el-tooltip>
+            </h5>
+
+            <hr class="divider divider-gray pt-2" />
+
+            <LicenseCard :license="metadata.license" />
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20" class="pb-5">
+        <el-col>
+          <el-card :body-style="{ padding: '0px' }" class="mx-10 p-5">
+            <h5 class="text-2xl font-medium">{{ t('object.retrieveMetadata') }}</h5>
+            <hr class="divider divider-gray pt-2" />
+            <RetrieveDataMetadata :id="id" :identifier="metadata.identifier" />
+            <template v-if="metadata.metadataLicense">
+              <hr class="divider divider-gray mt-4 pb-2" />
+              <h4 class="text-1xl font-medium">
+                {{ t('object.metadataLicensedAs') }}
+                <el-link underline="always" type="primary" :href="metadata.metadataLicense.id" target="_blank"
+                  class="mx-1">
+                  {{ metadata.metadataLicense.name || metadata.metadataLicense.id }}
+                </el-link>
+              </h4>
+            </template>
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20" class="pb-5" v-if="metadata">
+        <el-col>
+          <CitationCard :metadata="metadata" />
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20" class="pb-5">
+        <el-col v-if="entity">
+          <MemberOfCard routePath="collection" :entity="entity" />
+        </el-col>
+      </el-row>
+
+      <el-row v-if="membersFiltered?.length || totalMembers > 0">
+        <el-col>
+          <el-card :body-style="{ padding: '0px' }" class="mx-10 p-5">
+            <h5 class="text-2xl font-medium ">{{ t('object.otherObjectsInCollection') }} ({{ totalMembers }})</h5>
+            <hr class="divider divider-gray pt-2" />
+            <div v-if="isLoadingMembers" class="my-5">
+              <el-skeleton :rows="4" animated />
+            </div>
+            <ul v-else class="mt-4 space">
+              <li v-for="d of membersFiltered">
+                <p v-if="d.id === route.query.id" class="font-bold">
+                  {{ d.name || d.id }}
+                </p>
+                <CollectionItem v-else :field="d" routePath="object" />
+              </li>
+            </ul>
+            <el-pagination v-if="totalMembers > pageSize" class="mt-4" background layout="prev, pager, next"
+              :total="totalMembers" v-model:page-size="pageSize" v-model:current-page="currentPage"
+              @current-change="updatePage" />
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20" class="pb-5">
+        <el-col>
+          <TakedownCard />
+        </el-col>
+      </el-row>
+    </el-col>
+  </el-row>
+
+</template>

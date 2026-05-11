@@ -1,0 +1,7 @@
+onlyBuiltDependencies:
+  - '@sentry/cli'
+  - '@tailwindcss/oxide'
+  - esbuild
+  - lefthook
+  - oxc-resolver
+  - vue-demi
