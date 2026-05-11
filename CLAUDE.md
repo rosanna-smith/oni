@@ -40,7 +40,7 @@ Vue 3 (Composition API, `<script setup>`) + TypeScript + Vite + Tailwind CSS 4 +
 
 ### Configuration
 
-`/public/configuration.json` is loaded at startup and validated against the Zod schema in `src/configuration.ts`. When adding, removing, or changing configuration options, update the documentation in `README.md` (the "Configuration" section) to match. It controls:
+`/public/configuration.json` is loaded at startup and validated against the Zod schema in `src/configuration.ts`. When adding, removing, or changing configuration options, update `docs/configuration.md` to match. It controls:
 
 - UI branding, navigation, help text
 - Search fields, sort options, faceted aggregations
