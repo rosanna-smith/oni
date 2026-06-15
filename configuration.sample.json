@@ -357,6 +357,13 @@
         "lng": 134
       },
       "zoom": 8
+    },
+    "features": {
+      "hasZipDownload": true,
+      "hasAnnouncements": false,
+      "errorPageImage": true,
+      "fileVisibilityField": "display",
+      "preferredPhotoField": "image"
     }
   },
   "api": {

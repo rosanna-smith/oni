@@ -5,6 +5,7 @@ import CSVWidget from '@/components/widgets/CSVWidget.vue';
 import EafTranscriptionWidget from '@/components/widgets/EafTranscriptionWidget.vue';
 import PDFWidget from '@/components/widgets/PDFWidget.vue';
 import PlainTextWidget from '@/components/widgets/PlainTextWidget.vue';
+import { ui } from '@/configuration';
 import type { AnnotationRef, ApiService, EntityType, RoCrate } from '@/services/api';
 import { first } from '@/tools';
 
@@ -29,8 +30,48 @@ const annotationUrls = ref<string[]>([]);
 const currentTime = ref<number>(0);
 const mediaDuration = ref<number>(0);
 const mediaRef = ref<HTMLAudioElement | HTMLVideoElement | null>(null);
+const fileVisibilitySetting = ui.features?.fileVisibilityField;
+const fileVisibilityField =
+  typeof fileVisibilitySetting === 'string' && fileVisibilitySetting.trim().length > 0
+    ? fileVisibilitySetting
+    : 'display';
+const isFileVisibilityEnabled = fileVisibilitySetting !== false;
+
+const toVisibilityFlag = (value: unknown): boolean | undefined => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'false' || normalized === 'no') {
+      return false;
+    }
+    if (normalized === 'true' || normalized === 'yes') {
+      return true;
+    }
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const parsed = toVisibilityFlag(item);
+      if (parsed !== undefined) {
+        return parsed;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+const visibilityValue = (metadata as unknown as Record<string, unknown>)[fileVisibilityField];
+const shouldDisplayFile = !isFileVisibilityEnabled || toVisibilityFlag(visibilityValue) !== false;
 
 const resolveFile = async () => {
+  if (!shouldDisplayFile) {
+    return;
+  }
+
   if (entity.entityType !== 'http://schema.org/MediaObject') {
     return;
   }
@@ -63,6 +104,10 @@ const resolveAnnotations = async () => {
 };
 
 const handleDownload = async () => {
+  if (!shouldDisplayFile) {
+    return;
+  }
+
   if (entity.entityType !== 'http://schema.org/MediaObject') {
     return;
   }
@@ -148,7 +193,11 @@ const mediaType = encodingFormat;
 resolveFile();
 
 onMounted(() => {
-  if ((previewerType === PreviewerType.audio || previewerType === PreviewerType.video) && annotations.length > 0) {
+  if (
+    shouldDisplayFile &&
+    (previewerType === PreviewerType.audio || previewerType === PreviewerType.video) &&
+    annotations.length > 0
+  ) {
     resolveAnnotations();
   }
 });
@@ -159,7 +208,7 @@ onMounted(() => {
     <el-row justify="center">
       <el-col>
         <div class="container max-screen-lg mx-auto">
-          <div v-if="entity.access.content">
+          <div v-if="shouldDisplayFile && entity.access.content">
             <div v-if="previewerType === PreviewerType.pdf" class="flex justify-center w-full">
               <el-row :span="24">
                 <PDFWidget :src="streamUrl" />
@@ -208,7 +257,7 @@ onMounted(() => {
       </el-col>
     </el-row>
 
-    <el-row class="flex justify-center" v-if="entity.access.content">
+    <el-row class="flex justify-center" v-if="shouldDisplayFile && entity.access.content">
       <el-button-group class="m-2">
         <el-button type="default" @click="handleDownload">Download File&nbsp;<font-awesome-icon icon="fa fa-download" />
         </el-button>

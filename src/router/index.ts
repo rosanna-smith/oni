@@ -11,6 +11,7 @@ import List from '@/views/ListView.vue';
 import NotFound from '@/views/NotFoundView.vue';
 import CallbackOauth from '@/views/OauthCallbackView.vue';
 import ObjectView from '@/views/ObjectView.vue';
+import PersonView from '@/views/PersonView.vue';
 import Privacy from '@/views/PrivacyView.vue';
 import SearchMap from '@/views/SearchMapView.vue';
 import Search from '@/views/SearchView.vue';
@@ -59,6 +60,11 @@ const routes: RouterOptions['routes'] = [
         path: '/entity',
         name: 'entity',
         component: EntityView,
+      },
+      {
+        path: '/person',
+        name: 'person',
+        component: PersonView,
       },
       {
         path: '/file',

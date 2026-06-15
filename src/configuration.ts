@@ -207,6 +207,8 @@ const uiSchema = z.strictObject({
       hasZipDownload: z.boolean().optional(),
       hasAnnouncements: z.boolean().optional(),
       errorPageImage: z.union([z.boolean(), z.string()]).optional().default(true),
+      fileVisibilityField: z.union([z.string(), z.boolean()]).optional().default('display'),
+      preferredPhotoField: z.string().optional().default('image'),
     })
     .optional(),
   pagination: paginationSchema,
