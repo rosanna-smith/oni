@@ -697,7 +697,7 @@ Enable or disable specific features.
 **File visibility behavior:**
 
 - The configured field is read from file metadata.
-- Hidden values are `false`, `"no"`, and `"invisible"`.
+- Hidden values are `false`, `"no"`.
 - Any other value, or an absent field, leaves the file visible.
 - If `fileVisibilityField` is set to `false`, visibility filtering is disabled.
 - If `fileVisibilityField` is set to `true`, the default field `"display"` is used.
