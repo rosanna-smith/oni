@@ -78,9 +78,9 @@ const getFileMetadata = async () => {
 
     if (fileEntity.memberOf?.id) {
       try {
-        const parentResult = await api.getEntity(fileEntity.memberOf.id);
-        if (!('error' in parentResult)) {
-          parentUrl.value = getEntityUrl(parentResult.entity);
+        const parentEntity = await api.getEntity(fileEntity.memberOf.id);
+        if (!('error' in parentEntity)) {
+          parentUrl.value = getEntityUrl(parentEntity.entity);
         }
       } catch {
         // fall back to entity default
