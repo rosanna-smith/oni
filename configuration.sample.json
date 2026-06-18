@@ -352,6 +352,15 @@
         }
       },
       "zoom": 8
+    },
+    "features": {
+      "hasZipDownload": true,
+      "hasAnnouncements": false
+    },
+    "presentation": {
+      "errorPageImage": true,
+      "fileVisibilityField": ["display", "photo"],
+      "preferredPhotoField": "image"
     }
   },
   "api": {

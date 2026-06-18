@@ -88,6 +88,8 @@ export const getEntityUrl = (entity: EntityType) => {
       return `/collection?id=${id}`;
     case 'http://pcdm.org/models#Object':
       return `/object?id=${id}`;
+    case 'http://schema.org/Person':
+      return `/person?id=${id}`;
     case 'http://schema.org/MediaObject':
       return `/file?id=${id}`;
     default:

@@ -8,35 +8,38 @@ at the repo root.
 
 ## Contents
 
-- [Configuration Structure](#configuration-structure)
-- [UI Configuration](#ui-configuration)
-  - [Branding and Identity](#branding-and-identity)
-  - [Management](#management)
-  - [Splash Screen](#splash-screen)
-  - [Navigation](#navigation)
-    - [Available Routes](#available-routes)
-  - [Help and Information](#help-and-information)
-  - [Terms, Privacy, and Footer](#terms-privacy-and-footer)
-  - [Search Configuration](#search-configuration)
-  - [Main Data Display](#main-data-display)
-  - [Text Replacements](#text-replacements)
-  - [Metadata Display Configuration](#metadata-display-configuration)
-    - [Filter Mode](#filter-mode)
-    - [Explicit Mode](#explicit-mode)
-    - [File Metadata](#file-metadata)
-  - [HTML Head Metadata](#html-head-metadata)
-  - [Aggregations (Faceted Search)](#aggregations-faceted-search)
-  - [Login Configuration](#login-configuration)
-  - [Takedown Requests](#takedown-requests)
-  - [Citation Help](#citation-help)
-  - [Map Configuration](#map-configuration)
-  - [Analytics (Optional)](#analytics-optional)
-  - [Sentry Error Tracking (Optional)](#sentry-error-tracking-optional)
-  - [Features (Optional)](#features-optional)
-  - [Pagination (Optional)](#pagination-optional)
-- [API Configuration](#api-configuration)
-- [Validation](#validation)
-- [Example Complete Configuration](#example-complete-configuration)
+- [Configuration](#configuration)
+  - [Contents](#contents)
+  - [Configuration Structure](#configuration-structure)
+  - [UI Configuration](#ui-configuration)
+    - [Branding and Identity](#branding-and-identity)
+    - [Management](#management)
+    - [Splash Screen](#splash-screen)
+    - [Navigation](#navigation)
+      - [Available Routes](#available-routes)
+    - [Help and Information](#help-and-information)
+    - [Terms, Privacy, and Footer](#terms-privacy-and-footer)
+    - [Search Configuration](#search-configuration)
+    - [Main Data Display](#main-data-display)
+    - [Text Replacements](#text-replacements)
+    - [Metadata Display Configuration](#metadata-display-configuration)
+      - [Filter Mode](#filter-mode)
+      - [Explicit Mode](#explicit-mode)
+      - [File Metadata](#file-metadata)
+    - [HTML Head Metadata](#html-head-metadata)
+    - [Aggregations (Faceted Search)](#aggregations-faceted-search)
+    - [Login Configuration](#login-configuration)
+    - [Takedown Requests](#takedown-requests)
+    - [Citation Help](#citation-help)
+    - [Map Configuration](#map-configuration)
+    - [Analytics (Optional)](#analytics-optional)
+    - [Sentry Error Tracking (Optional)](#sentry-error-tracking-optional)
+    - [Presentation (Optional)](#presentation-optional)
+    - [Features (Optional)](#features-optional)
+    - [Pagination (Optional)](#pagination-optional)
+  - [API Configuration](#api-configuration)
+  - [Validation](#validation)
+  - [Example Complete Configuration](#example-complete-configuration)
 
 ## Configuration Structure
 
@@ -143,7 +146,9 @@ The following routes are available for use in navigation items:
 | `list` | Browse all entities with sorting and pagination | `entityType` (optional) - Filter by RO-Crate profile URL |
 | `collection` | Display detailed information about a collection entity | `id` (required) - Collection identifier |
 | `object` | Display detailed information about an object entity | `id` (required) - Object identifier |
-| `file` | Display detailed information about a file | `id` (required) - File identifier<br/>`parentId` (required) - Parent object identifier |
+| `entity` | Display detailed information about a generic entity | `id` (required) - Entity identifier |
+| `person` | Display detailed information about a person entity | `id` (required) - Person identifier |
+| `file` | Display detailed information about a file | `id` (required) - File identifier |
 | `about` | Display application information and citation text | None |
 | `terms` | Display terms and conditions | None |
 | `privacy` | Display privacy policy | None |
@@ -660,6 +665,30 @@ Configure Sentry for error tracking and monitoring.
 }
 ```
 
+### Presentation (Optional)
+
+Configure display and rendering behavior for specific views.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `ui.presentation.errorPageImage` | boolean \| string | No | Controls the image shown on the 404 page. Set `false` to hide it, `true` to use the default image, or provide a string URL/path to use a custom image. |
+| `ui.presentation.fileVisibilityField` | string \| string[] \| boolean | No | Controls file preview visibility filtering. Set a string or string array to choose one or more metadata field names (for example, `"display"` or `["display", "photo"]`). Set `true` to use the default field (`"display"`). Set `false` to disable visibility filtering and always show files that are otherwise accessible. |
+| `ui.presentation.preferredPhotoField` | string | No | Metadata field name on Person entities used to select the preferred/main photo in PersonView. The field may contain a string path/ID, an object with `@id`, or arrays of those values. Default is `"image"`. |
+
+**Example:**
+
+```json
+{
+  "ui": {
+    "presentation": {
+      "errorPageImage": true,
+      "fileVisibilityField": ["display", "photo"],
+      "preferredPhotoField": "image"
+    }
+  }
+}
+```
+
 ### Features (Optional)
 
 Enable or disable specific features.
@@ -683,6 +712,22 @@ Enable or disable specific features.
   }
 }
 ```
+
+**File visibility behavior:**
+
+- The configured field is read from file metadata.
+- If multiple fields are configured, each is checked.
+- Hidden values are boolean `false` only.
+- Any other value, or an absent field, leaves the file visible.
+- If any configured field is `false`, the file is hidden.
+- If `fileVisibilityField` is set to `false`, visibility filtering is disabled.
+- If `fileVisibilityField` is set to `true`, the default field `"display"` is used.
+
+**Preferred photo behavior:**
+
+- The configured field is read from Person metadata.
+- The first matching image reference is selected as the main photo.
+- If no matching image is found, PersonView falls back to the first available visible image.
 
 ### Pagination (Optional)
 

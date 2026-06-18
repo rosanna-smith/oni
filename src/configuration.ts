@@ -210,12 +210,18 @@ const uiSchema = z.strictObject({
     })
     .optional(),
   mapConfig: mapSchema.optional().default({ boundingBox: defaultBoundingBox, zoom: defaultZoom }),
+  presentation: z
+    .strictObject({
+      errorPageImage: z.union([z.boolean(), z.string()]).optional(),
+      fileVisibilityField: z.union([z.string(), z.array(z.string()), z.boolean()]).optional(),
+      preferredPhotoField: z.string().optional(),
+    })
+    .optional(),
   features: z
     .strictObject({
       hasZipDownload: z.boolean().optional(),
       hasAnnouncements: z.boolean().optional(),
       disableMaps: z.boolean().optional(),
-      errorPageImage: z.union([z.boolean(), z.string()]).optional().default(true),
     })
     .optional(),
   pagination: paginationSchema,
